@@ -1,3 +1,8 @@
+#define _CRT_SECURE_NO_WARNINGS
+#define _USE_MATH_DEFINES
+#ifdef _WIN32
+#pragma comment(lib, "Ws2_32.lib")
+#endif
 #include <math.h>
 #include <uWS/uWS.h>
 #include <iostream>
@@ -33,12 +38,23 @@ string hasData(string s) {
 int main() {
   uWS::Hub h;
 
-  PID pid;
+  PID pid, pid_th;
   /**
    * TODO: Initialize the pid variable.
    */
+	double Kp_val = 0.12;
+	double Ki_val = 0.00003;
+	double Kd_val = 2;
 
-  h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, 
+	double Kp_th_val = 0.13;
+	double Ki_th_val = 0.0001;
+	double Kd_th_val = 3;
+	double target_speed = 60;
+
+	pid.Init(Kp_val, Ki_val, Kd_val);
+	pid_th.Init(Kp_th_val, Ki_th_val, Kd_th_val);
+
+  h.onMessage([&pid, &pid_th, &target_speed](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, 
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -56,21 +72,26 @@ int main() {
           double cte = std::stod(j[1]["cte"].get<string>());
           double speed = std::stod(j[1]["speed"].get<string>());
           double angle = std::stod(j[1]["steering_angle"].get<string>());
-          double steer_value;
+          double steer_value = 0;
+					double throttle = 0.3;
           /**
            * TODO: Calculate steering value here, remember the steering value is
            *   [-1, 1].
            * NOTE: Feel free to play around with the throttle and speed.
            *   Maybe use another PID controller to control the speed!
            */
-          
+					pid.UpdateError(cte);
+					steer_value = pid.UpdateControl();
+
+					pid_th.UpdateError(speed - target_speed);
+					throttle = pid_th.UpdateControl();
           // DEBUG
           std::cout << "CTE: " << cte << " Steering Value: " << steer_value 
                     << std::endl;
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;
-          msgJson["throttle"] = 0.3;
+          msgJson["throttle"] = throttle;
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
           std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
@@ -94,12 +115,23 @@ int main() {
   });
 
   int port = 4567;
-  if (h.listen(port)) {
-    std::cout << "Listening to port " << port << std::endl;
-  } else {
-    std::cerr << "Failed to listen to port" << std::endl;
-    return -1;
-  }
+#ifdef _WIN32
+	if (h.listen("127.0.0.1", port)) {
+		std::cout << "Listening to port " << port << std::endl;
+	}
+	else {
+		std::cerr << "Failed to listen to port" << std::endl;
+		return -1;
+	}
+#else
+	if (h.listen(port)) {
+		std::cout << "Listening to port " << port << std::endl;
+	}
+	else {
+		std::cerr << "Failed to listen to port" << std::endl;
+		return -1;
+	}
+#endif
   
   h.run();
 }
