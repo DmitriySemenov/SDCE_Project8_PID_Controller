@@ -8,13 +8,15 @@ PID::PID() {}
 
 PID::~PID() {}
 
-void PID::Init(double Kp_, double Ki_, double Kd_) {
+void PID::Init(double Kp_, double Ki_, double Kd_, double dz_start, double dz_end) {
   /**
    * TODO: Initialize PID coefficients (and errors, if needed)
    */
 	Kp = Kp_;
 	Ki = Ki_;
 	Kd = Kd_;
+	i_dz_start = dz_start;
+	i_dz_end = dz_end;
 	p_error = 0;
 	i_error = 0;
 	d_error = 0;
@@ -29,7 +31,10 @@ void PID::UpdateError(double err) {
 		err_prev = err;
 	d_error = err - err_prev;
 	p_error = err;
-	i_error += err;
+	if (err > i_dz_end)
+		i_error += (err - i_dz_end);
+	else if (err < i_dz_start)
+		i_error += (err - i_dz_start);
 	err_prev = err;
 
 }

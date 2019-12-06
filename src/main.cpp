@@ -7,6 +7,7 @@
 #include <uWS/uWS.h>
 #include <iostream>
 #include <string>
+#include <ctime>
 #include "json.hpp"
 #include "PID.h"
 
@@ -42,22 +43,29 @@ int main() {
   /**
    * TODO: Initialize the pid variable.
    */
-	double Kp_val = 0.12;
-	double Ki_val = 0.00003;
-	double Kd_val = 2;
+	double Kp_val = 0.13;
+	double Ki_val = 0.0008;
+	double Kd_val = 2.8;
+	double dz_start = -0.1;
+	double dz_end = 0.1;
 
 	double Kp_th_val = 0.13;
 	double Ki_th_val = 0.0001;
 	double Kd_th_val = 3;
+	double dz_th_start = -0.5;
+	double dz_th_end = 0.5;
+
 	double target_speed = 60;
-	double step = 0;
 	int lap_num = 1;
 	double lap_cte_total = 0;
+	std::clock_t start_time = -1;
+	std::clock_t prev_time = 0;
 
-	pid.Init(Kp_val, Ki_val, Kd_val);
-	pid_th.Init(Kp_th_val, Ki_th_val, Kd_th_val);
 
-  h.onMessage([&pid, &pid_th, &target_speed, &step, &lap_num, &lap_cte_total](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
+	pid.Init(Kp_val, Ki_val, Kd_val, dz_start, dz_end);
+	pid_th.Init(Kp_th_val, Ki_th_val, Kd_th_val, dz_th_start, dz_th_end);
+
+  h.onMessage([&pid, &pid_th, &target_speed, &lap_num, &lap_cte_total, &start_time, &prev_time](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -77,44 +85,54 @@ int main() {
           double angle = std::stod(j[1]["steering_angle"].get<string>());
           double steer_value = 0;
 					double throttle = 0.3;
-					double lap1_dist = 1350;
-					double lap_dist = 1300;
+					double lap1_duration = 43.2;
+					double lap_duration = 42.7;
+					double curr_time, duration, time_diff;
           /**
            * TODO: Calculate steering value here, remember the steering value is
            *   [-1, 1].
            * NOTE: Feel free to play around with the throttle and speed.
            *   Maybe use another PID controller to control the speed!
            */
+
+					if (start_time == -1)
+						start_time = std::clock();
+
+					curr_time = std::clock();
+					duration = (curr_time - start_time) / (double)CLOCKS_PER_SEC;
+					time_diff = (curr_time - prev_time) / (double)CLOCKS_PER_SEC;
+					prev_time = curr_time;
+
 					pid.UpdateError(cte);
 					steer_value = pid.UpdateControl();
 
 					pid_th.UpdateError(speed - target_speed);
 					throttle = pid_th.UpdateControl();
-					step += 1;
 					lap_cte_total += fabs(cte);
 
 					if (lap_num == 1)
 					{
-						if (step >= lap1_dist)
+						if (duration >= lap1_duration)
 						{
 							std::cout << " Lap: " << lap_num << " LAP CTE TOTAL: " << lap_cte_total << std::endl;
 							lap_num += 1;
-							step = 1;
+							start_time = std::clock();
 							lap_cte_total = 0;
 						}
 					}
 					else {
-						if (step >= lap_dist)
+						if (duration >= lap_duration)
 						{
 							std::cout << " Lap: " << lap_num << " LAP CTE TOTAL: " << lap_cte_total << std::endl;
 							lap_num += 1;
-							step = 1;
+							start_time = std::clock();
 							lap_cte_total = 0;
 						}
 					} 
           // DEBUG
           //std::cout << "CTE: " << cte << " Steering Value: " << steer_value 
-          //          << " Step: " << step << " Lap: " << lap_num << " LAP CTE TOTAL: " << lap_cte_total << std::endl;
+          //          << " Lap: " << lap_num << " LAP CTE TOTAL: " << lap_cte_total << std::endl;
+					std::cout << "CTE: " << cte << " Time Step: " << time_diff << "\r";
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;
