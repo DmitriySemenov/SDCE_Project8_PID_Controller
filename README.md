@@ -36,6 +36,11 @@ At this point, with just the PD controller, CTE values were found to be 1090 and
 
 Next, and I-term is added to the controller. Since I-term acts on the sum of the error, it should help minimize the CTE during sweeping corners where the error will gradually accumulate over time. 
 
-Initially I-gain is set to 0.1, but it can be seen from [this video](Videos/07_P_Term_0p13_D_Term_2p8_I_Term_0p1.mp4) that it's too high and I-term overpowers the other two terms and causes vehicle to spin in circles. Even reducing it by a factor of 10 to 0.01 is not enough as can be seen [here](Videos/08_P_Term_0p13_D_Term_2p8_I_Term_0p01.mp4). Reducing it again by a factor of 10 to 0.001 finally has the desired effect and vehicle makes it around the track. CTE error for this PID controller is found to be 874, and 837, which is a better result than the previous PD-only controller with the same P and D gains.
+Initially I-gain is set to 0.1, but it can be seen from [this video](Videos/07_P_Term_0p13_D_Term_2p8_I_Term_0p1.mp4) that it's too high and I-term overpowers the other two terms and causes vehicle to spin in circles. Even reducing it by a factor of 10 to 0.01 is not enough as can be seen [here](Videos/08_P_Term_0p13_D_Term_2p8_I_Term_0p01.mp4). Reducing it again by a factor of 10 to 0.001 finally has the desired effect and vehicle makes it around the track. CTE for this PID controller is found to be 874, and 837, which is a better result than the previous PD-only controller with the same P and D gains.
+Further tuning showed that the best I-gain is 0.0008, which results in 857, and 814 CTE values for 2 laps.
 
+One last improvement that was made is an introduction of deadzone to the I-term. I-term introduces some oscillations when vehicle is driving near a straight lane (even though it helps during cornering), so to reduce the effect that a small amount of error causes the deadzone of -0.1 to 0.1 was set. This slightly improved the CTE to 839, 818.
+
+Final set of parameters that worked well with my setup was: P = 0.13, I = 0.0008, D = 2.8.
+Here's a [video of the vehicle driving full lap with best parameters](Videos/10_P_Term_0p13_D_Term_2p8_I_Term_0p0008_DZ.mp4).
 
